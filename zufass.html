@@ -1,0 +1,512 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>PES Zusammenfassung</title></head>
+<script type="text/javascript" src="jquery-1.11.2.min.js"></script>
+<script type="text/javascript" src="wookmark.min.js"></script>
+<script type="text/javascript">
+        $(function() {
+          //$(".MainPage").wookmark();
+          var wookmark = new Wookmark('.MainPage');
+        }
+        )
+        </script>
+        
+<link href="zufass.css" rel="stylesheet" type="text/css">
+<body>
+<div class="DocTitle">
+    <h1>PES Zusammenfassung</h1>
+    </div>
+    <div class="MainPage">
+<ol>
+<li  class="L1" ><div class="L1" >ToC</div> <ol>
+<li  class="L2" ><div class="L2" >1 Einführung / Keil RL-ARM Getting Started Guide</div>
+<li  class="L2" ><div class="L2" >2 Scheduling</div>
+<li  class="L2" ><div class="L2" >3 ARM Architektur</div>
+<li  class="L2" ><div class="L2" >4 NVIC - Nested Vectored Interrupt Controller folien/HPES15_4_NVIC.pdf</div>
+<li  class="L2" ><div class="L2" >5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze</div>
+<li  class="L2" ><div class="L2" >6 Filesystem folien/HPES15_6_filesystem.pdf</div>
+<li  class="L2" ><div class="L2" >7 Debuggin folien/HPES15_7_Debugging.pdf</div> </ol>
+<li  class="L1" ><div class="L1" >1 Einführung / Keil RL-ARM Getting Started Guide</div> <ol>
+<li  class="L2" ><div class="L2" >RTOS - Real Time Operating System</div> <ol>
+<p  class="P3" >Bei RTOSs steht die Antwortzeit auf eingehende Events und deren
+Zuverlässigkeit im Fokus. Die RTOS Programmierung ist aufwendiger in der
+Performance und braucht mehr Speicherplatz als die herkömmliche
+Programmierung von Mikrokontrollern. Vor einigen Jahren war es noch
+nicht möglich ein RTOS auf einem Mikrokontroller zu realisieren. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Tasks</div> <ol>
+<p  class="P3" >In RTOS arbeitet man nur mit Tasks. Diese sind ähnlich wie herkömmliche
+C-Prozesse, haben aber auch fundamentale Unterschiede.
+</p>
+<li  class="L3" ><div class="L3" >loop anstatt return value</div> <ol>
+<p  class="P4" >Tasks laufen im unendlichen Loop </p>
+</ol>
+<li  class="L3" ><div class="L3" >__task keyword</div> <ol>
+<p  class="P4" >Task Definitionen beginnen mit __task </p>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Programmstart p21/22</div> <ol>
+<p  class="P3" >Das Programm startet man in der main Routine. Der erste Task wird mit
+dem Befehl os_sys_init(task1) aufgerufen. Dieser muss nun andere Tasks
+starten. Sind mehrere Task gestartet, werden diese vom RTX Schduler
+verwaltet. Hat ein Task eine höhere Priorität als die anderen, wird
+nur diesem Prozessorzeit zugeteilt, bis er in den Zustand WAITING geht.
+Alle Tasks mit gleicher Priorität erhalten nach dem RoundRobin Prinzip
+Prozessorzeit. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Dem Task einen grösseren Stack mitgeben</div> <ol>
+<p  class="P3" >Per default haben alle Tasks haben die gleiche Stackgrösse. Man kann
+aber mit "static U64 stk4 400/8" einen grossen Stack deklarieren und
+diesen dem Task mitgeben (Beachte *_user am Ende des Befehls):
+</p>
+<pre  class="PRE3" > tskID4 = os_tsk_create_user (Task4, priority, &stk4, sizeof (stk4)); </pre>
+</ol>
+<li  class="L2" ><div class="L2" >Verwaltung von laufenden Tasks p24</div> <ol>
+<p  class="P3" >Man kann die Prio von laufenden Tasks ändern.
+</p>
+<pre  class="PRE3" > OS_RESULT = os_tsk_prio (tskID2, priority);
+ OS_RESULT = os_tsk_prio_self (priority);
+</pre>
+<p  class="P3" >Oder man kann laufende Tasks löschen:
+</p>
+<pre  class="PRE3" > OS_RESULT = os_tsk_delete (tskID1);
+ OS_RESULT = os_tsk_delete_self ();
+</pre>
+<p  class="P3" >Oder man kann die Kontrolle dem nächsten "READY" Task gleicher Prio
+übergeben. Die wird benutzt, um den Scheduling Algo "co-operative" zu
+implementieren.
+</p>
+<pre  class="PRE3" > os_tsk_pass (); </pre>
+</ol>
+<li  class="L2" ><div class="L2" >Time Management p24</div> <ol>
+<li  class="L3" ><div class="L3" >Clock/Time Einstellungen des RTOS</div> <ol>
+<p  class="P4" >Es gib zwei Dateien mit wichtigen Einstellungen:
+</p>
+<li  class="L4" ><div class="L4" >hal_system.c</div> <ol>
+<p  class="P5" >In dieser Datei werden mit dem Befehl SysCtlClockSet(params..) der
+Taktteiler, Frequenz des Quartz, und, ob man die PLL benutzt,
+eingestellt.
+</p>
+<p  class="P5" >
+Die PLL gibt immer um die 400 MHz aus. Mit dem Teiler 4, die dem
+Befehl mitgegeben werden, werden daraus 100 MHz. Dann gibt es intern
+zw. PLL und Takteiler einen weiteren /2 Teiler. Daraus resultiert
+also ein 50 MHz System Clock Frequenz. </p>
+</ol>
+<li  class="L4" ><div class="L4" >RTX_Config.c</div> <ol>
+<p  class="P5" >Dem System wird  mitgeteilt, über welchen OS Clock es verfügt. Die
+50 MHz aus der hal_system.c Datei werden hier mit "#define OS_CLOCK
+50000000" eingetragen.
+</p>
+<p  class="P5" >
+Ausserdem wird der OS_TICK definiert. Dieser Wert entscheidet mit
+dem OS_CLOCK, auf wie viel der System Tick Timer zählt. Die Formel
+geht so:
+</p>
+<pre  class="PRE5" > Reload-Wert = OS_TICK(zB 10ms)  * OS_CLOCK(zB 50MHz) (siehe P1 A3.2.5)
+</pre>
+<p  class="P5" >Das RTOS zählt den Reload Wert herunter, macht einen System Tick und
+reloaded den Reload Wert. </p>
+</ol>
+</ol>
+<li  class="L3" ><div class="L3" >Timer Delay</div> <ol>
+<p  class="P4" >Der Task wird in den WAITING State versetzt und der Scheduler schaltet
+zum nächsten READY Task.
+</p>
+<pre  class="PRE4" > void os_dly_wait (unsigned short delay_time) </pre>
+</ol>
+<li  class="L3" ><div class="L3" >Periodisches Ausführen eines Tasks</div> <ol>
+<p  class="P4" >Man kann dem Task eine Zeit zuteilen, die er sich schlafen legen soll,
+bevor er sich wieder in den READY State begibt. Im Task:
+</p>
+<pre  class="PRE4" > void os_itv_set (unsigned short interval_time)
+</pre>
+<p  class="P4" >Wenn man nun im Task os_itv_wait() ausführt, wartet der Task bis das
+Intervall abgelaufen ist, bis er sich wieder in den READY Zustand
+begibt. </p>
+</ol>
+<li  class="L3" ><div class="L3" >Virtual Timer p26</div> <ol>
+<p  class="P4" >Ermöglicht es, eine Funktion aufzurufen, die nach einer bestimmten Zeit
+erst ausgelöst wird. Alle Virtual Timer Funktionen werden in einer
+os_tmr_call Funktion in der Datei RTX_Config.c definiert, und anhand
+eines case-switch unterschieden. Der Timer wird nach dem Aufruf
+os_tmr_create(switch-Wert) gesetzt.
+</p>
+<p  class="P4" >
+Beim Praktikum 1 hat sich jedoch herausgestellt, dass sich der Virtual
+Timer nicht für sich wiederholende Aufrufe eignet, da man den Timer
+nach für jede Wiederholung erneut mit os_tmr_create Auslösen muss.
+Leider kann sich der Timer nach getaner Arbeit auch nicht selbst
+wieder auslösen (aus unbekannten Gründen). </p>
+</ol>
+<li  class="L3" ><div class="L3" >Idle Demon p27 TODO</div> </ol>
+<li  class="L2" ><div class="L2" >Inter Task Communication</div> <ol>
+<p  class="P3" >Es gibt vier Möglichkeiten: Events, Semaphores, Mutexes und Mailboxes. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Events p28 TODO</div>
+<li  class="L2" ><div class="L2" >RTOS Interrupt Handling p29</div> <ol>
+<p  class="P3" >Es wird empfohlen, die Interrupts so selten wie möglich zu benutzen
+und statt dessen auf Events zu setzen. Interrupts sind nicht ideal,
+weil der ARM7/9 alle General Purpose Pins blockiert bis man die ISR
+verlassen hat. Dies verzögert den SysTick und unterbricht den
+Kernel.
+</p>
+<p  class="P3" >
+Beim Cortex-M ist das Verwenden des Interrupts weniger proplematisch.
+Dem im Gegensatz zum ARM7/9 besitzt er nested Interrupts. Die INTs mit
+höherer Priorität können also andere INTs unterbrechen.
+</p>
+<p  class="P3" >
+Trotzdem ist es ratsam, den Code in der ISR möglichst kurz zu halten.
+</p>
+<pre  class="PRE3" > void IRQ_Handler (void) __irq  {
+ 	isr_evt_set (0x0001, tsk3);    // Signal Task 3 with an event
+ 	EXTINT = 0x00000002;           // Clear the peripheral interrupt flag
+ 	VICVectAddr = 0x00000000;      // Signal end of interrupt to the VIC
+ }
+</pre>
+<p  class="P3" >Die ISR setzt lediglich einen Event ab. Das eigentliche Handling spielt
+sich im Task ab ,der auf diesen Event wartet:
+</p>
+<pre  class="PRE3" > void Task3 (void)  {
+ 	while (1)  {
+	 	os_evt_wait_or (0x0001, 0xffff);  // Wait until ISR triggers an event
+ 	// Handle the interrupt
+ 	}                                 // Loop and go back to sleep
+ } </pre>
+</ol>
+<li  class="L2" ><div class="L2" >Semaphores p32 TODO</div>
+<li  class="L2" ><div class="L2" >Mutex p38 TODO</div>
+<li  class="L2" ><div class="L2" >Mailbox p39 TODO</div>
+<li  class="L2" ><div class="L2" >RTX Kernel s7/p19</div> <ol>
+<p  class="P3" >Besteht aus einem Scheduler, Zeit- und Speichermanagement Services.
+Es gibt drei Schedulung Algos:
+</p>
+<li  class="LB3" > round-robin
+<li  class="LB3" > pre-emptive, and cooperative multitasking of program tasks
+<p  class="P3" >Ein zusätzliches RTOS Objekt ermöglicht Inner-task Kommunikation:
+</p>
+<li  class="LB3" > Event triggering
+<li  class="LB3" > Semaphores
+<li  class="LB3" > Mutex
+<li  class="LB3" > Ein Mailbox System </ol>
+</ol>
+<li  class="L1" ><div class="L1" >2 Scheduling</div> <ol>
+<li  class="L2" ><div class="L2" >Task Konzept</div> <ol>
+<p  class="P3" >Jeder Task sollte eine bestimmte Funktion ausführen. Das Ziel ist, ein
+objektorientiertes und modulares Design und daraus die oft zitierten
+Vorteile zu erhalten: Die Task in anderen Projekten wiederverwendet
+werden. Bei Fehlfunktionen kann das Problem schnell auf eine Task
+zurückgeführt werden. Die Task können isoliert, oder in einer
+Simulationsumgebung getestet werden. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Multitasking</div> <ol>
+<p  class="P3" >Die Task werden parallel ausgeführt. Die hat wiederum viele Vorteile:
+</p>
+<li  class="LB3" > Prozessor IDLE vermeiden <ol>
+<p  class="P4" >Während der Prozessor zB auf ein Laufwerk wartet können andere Tasks
+erledigt werden. </p>
+</ol>
+<li  class="LB3" > Mehrere Benutzer an einem System
+<li  class="LB3" > Klarere Programmstrukturierung <ol>
+<p  class="P4" >Embedded System mit vielen Teilsystemen: Abbildung der realen
+Aussenwelt. </p>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Scheduler und Scheduling Optionen</div> <ol>
+<p  class="P3" >Der Scheduler teilt den Tasks anhand von zu definierenden Scheduling
+Algos Prozessorzeit zu und veranlasst unter gegebenen Bedingungen
+einen Taskwechsel. Es gibt diese Scheduling Algos:
+</p>
+<li  class="LB3" > Round Robin <ol>
+<li  class="LB4" > Jede Task hat gleiche Priorität
+<li  class="LB4" > Task läuft bis sie blockiert (os_wait..)
+<li  class="LB4" > Oder, falls sie nicht blockiert, bis der Round Robin Timeout eintritt
+<li  class="LB4" > Bei RL ARM lässt sich sich die Anzahl Timeout Ticks einstellen <ol>
+<p  class="P5" >In der Datei rtx_config.c </p>
+</ol>
+</ol>
+<li  class="LB3" > Preemptive Scheduling <ol>
+<p  class="P4" >Wie RR, aber die Tasks können solche mit niedriger Priorität
+unterbrechen.
+</p>
+<li  class="L4" ><div class="L4" >Problem: Priority Inversion</div> <ol>
+<li  class="L5" ><div class="L5" >Bsb Prios Task 1-3: pT1 > pT2 > pT1</div> <ol>
+<p  class="P6" >T1 delegiert an T3, und wartet auf dessen Antwort. T3 arbeitet,
+wird dann aber von T2 unterbrochen. Nun hat also im übertragenen
+Sinne T2 T1 unterbrochen, trotz niedriger Priorität. </p>
+</ol>
+</ol>
+</ol>
+<li  class="LB3" > Co-Operative Scheduling <ol>
+<p  class="P4" >Der Taskwechsel findet nur statt, wenn der aktuelle Task blockiert.
+</p>
+<li  class="L4" ><div class="L4" ><img src="./pics/v2_scheduling-coop_scheduling.png" alt="./pics/v2_scheduling-coop_scheduling.png"></div> </ol>
+<li  class="L3" ><div class="L3" >RL-ARM Scheduling Tabelle</div> <ol>
+<table class="TAB4">
+<tr><th>RR gewählt</th><th>Task Prioritäten</th><th>Scheduling</th></tr>
+<tr><td>Nein</td><td>Unterschiedlich</td><td>Pre-emptive</td></tr>
+<tr><td>Ja</td><td>Gleich</td><td>RR</td></tr>
+<tr><td>Nein</td><td>Gleich</td><td>Co-operative</td></tr>
+<tr><td>Ja</td><td>Unterschiedlich</td><td>Pre-emptive und RR</td></tr> </table>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Probleme Prozess Synchronisation</div> <ol>
+<li  class="LB3" > Mutual Exclusion <ol>
+<p  class="P4" >Wenn ein Task kritische Daten bearbeitet, darf er von einem
+nebenläufigen Task, der die gleichen Daten bearbeitet, nicht
+unterbrochen werden. </p>
+</ol>
+<li  class="LB3" > Deadlock <ol>
+<p  class="P4" >T1 wartet auf Informationen von T2. T2 kann aber nicht weiterarbeiten,
+da er darauf wartet, bis T1 fertig ist. </p>
+</ol>
+<li  class="LB3" > Synchronisation <ol>
+<p  class="P4" >Ein Prozess kann erst weiterlaufen, wenn er Informationen von einem
+anderen Prozess hat. </p>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Task Kreieren und Prioritäten setzen (Keil GS p23 / s14)</div> <ol>
+<p  class="P3" >Am besten benutzt man den ersten Task um die eigentlichen Tasks zu
+starten. Dies geschieht mit dem Befehlt os_tsk_create(). Dem neuen Task
+können auch Priorität und Parameter mitgegeben werden.
+</p>
+<pre  class="PRE3" > tskID3 = os_tsk_create_ex (Task3, priority, parameter);
+</pre>
+<p  class="P3" >Priority nimmt Werte von 1-255. Die Priorität 0 ist für den IDLE Task
+reserviert.
+</p>
+<p  class="P3" >
+Hat man alle Task erstellt, sollte man den ersten Task mit dem Befehl
+os_tsk_delete_self() töten. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Taskwechsel</div> <ol>
+<p  class="P3" >Zuerst einmal braucht der Scheduler einen Timer, um die Zeit, zu
+messen. In unserem Fall ist dies der SysTick Timer des
+(Cortex-M-)Prozessors.
+</p>
+<p  class="P3" >
+Bei jedem Taskwechsel müssen alle Informationen des abzulösenden Tasks
+gespeichert werden. Man unterscheidet zwischen "State" und "Runtime"
+Informationen. Ersteres wird im Task Stack und letzteres im Task
+Control Block gespeichert. Jede Task hat seinen eigenen Task Stack, in
+den sie bei einem Wechsel ihre Infos speichert. der Task Control Block
+wird vom Kernel benutzt und verwaltet.
+</p>
+<p  class="P3" >
+Eine wichtige Kenngrösse ist die "Context Switch Time", die den
+Zeitbedarf eines Taskwechsels angibt. Sie hängt vom Kernel und vom
+Hardware Design ab. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Taskzustände s8</div> <ol>
+<p  class="P3" >Können 4 verschiedene Zustände haben: Ready, Running, Blocked (Wait) und
+Sleeping. Die meiste Zeit verbringt der Task in den Zuständen Blocked
+und Ready.
+</p>
+<li  class="L3" ><div class="L3" ><img src="./pics/v2_scheduling-task_states.png" alt="./pics/v2_scheduling-task_states.png"></div>
+<p  class="P3" >
+Der Scheduler kann alle Tasks, die im Zustand Ready sind aktivieren und
+somit in den Zustand Running versetzen. Auf p21 des Getting Started
+Buchs sind alle Zustände und deren Bedeutung tabelliert.
+</p>
+<table class="TAB3">
+<tr><td>RUNNING</td><td>The currently running TASK</td></tr>
+<tr><td>READY</td><td>TASKS ready to run</td></tr>
+<tr><td>WAIT DELAY</td><td>TASKS halted with a time DELAY</td></tr>
+<tr><td>WAIT INT</td><td>TASKS scheduled to run periodically</td></tr>
+<tr><td>WAIT OR</td><td>TASKS waiting an event flag to be set</td></tr>
+<tr><td>WAIT AND</td><td>TASKS waiting for a group event flag to be set</td></tr>
+<tr><td>WAIT SEM</td><td>TASKS waiting for a SEMAPHORE</td></tr>
+<tr><td>WAIT MUT</td><td>TASKS waiting for a SEMAPHORE MUTEX</td></tr>
+<tr><td>WAIT MBX</td><td>TASKS waiting for a MAILBOX MESSAGE</td></tr>
+<tr><td>INACTIVE</td><td>A TASK not started or detected</td></tr> </table>
+</ol>
+<li  class="L2" ><div class="L2" >Events</div> <ol>
+<li  class="L3" ><div class="L3" >Task 1 wartet auf einen Event</div>
+<li  class="L3" ><div class="L3" >Task 2 schickt Event an Task  2</div> </ol>
+<li  class="L2" ><div class="L2" >Semaphores</div> <ol>
+<li  class="L3" ><div class="L3" >Semaphores step by step</div> <ol>
+<li  class="L4" ><div class="L4" >Weiteres im Buch (getting stated) s35</div> </ol>
+<li  class="L3" ><div class="L3" >Barrier Turnstile</div>
+<p  class="P3" >Alle Tasks warten aufeinander bis sie den Entry Turnstile erreichen, Alle
+verlassen den Turnstile geleichzeitig. </p>
+</ol>
+</ol>
+<li  class="L1" ><div class="L1" >3 ARM Architektur</div> <ol>
+<li  class="L2" ><div class="L2" >Geschichte</div>
+<li  class="L2" ><div class="L2" >Cortex-M3 Architektur</div> <ol>
+<p  class="P3" >Cortex-M3 benutzt eine (Modified) Harvard Architektur
+</p>
+<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_arch.png" alt="./pics/v3_arm_arch-cortex_m3_arch.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Instruction Pipeline</div> <ol>
+<p  class="P3" >Die Pipeline hat 3 Stufen: Fetch, Decode und Execute
+</p>
+<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_pipeline.png" alt="./pics/v3_arm_arch-cortex_m3_pipeline.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Register Architektur</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_register.png" alt="./pics/v3_arm_arch-cortex_m3_register.png"></div>
+<li  class="L3" ><div class="L3" >R14 Link Register</div> <ol>
+<p  class="P4" >Stores PC on subroutine calls. If several layers of subroutines are
+called, R14 is stored on Stack. </p>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Bedingte Befehle</div> <ol>
+<p  class="P3" >Die ersten 4 Bits (31-28) einer Instruktion(→PSR) geben eine Condition an.
+</p>
+<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_condition_codes.png" alt="./pics/v3_arm_arch-cortex_m3_condition_codes.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Betriebsarten</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_betriebsarten.png" alt="./pics/v3_arm_arch-cortex_m3_betriebsarten.png"></div>
+<p  class="P3" >Das Programm startet zuerst im Priviledged Thread Modus und wechselt
+später in den User Thread Modus. Von da aus kann nur über eine
+Exception zum Priviledged Thread Modus gewechselt werden. Wenn man eine
+Exception aufruft, kommt man in den Priviledged Handler. Hier muss man
+nun das Controll Register Bit-0 auf 0 für Privileged Thread oder auf 1
+für User Thread Mode setzen. </p>
+</ol>
+<li  class="L2" ><div class="L2" >UART konfigurieren</div> </ol>
+<li  class="L1" ><div class="L1" >4 NVIC - Nested Vectored Interrupt Controller</div> <ol>
+<li  class="L2" ><div class="L2" >Was passiert als erstes bei einem Interrupt?</div>
+<p  class="P2" >prgrm counter ändert Wert zu demjenigen des Interrupts aus der Interrupt
+Vektor Table
+</p>
+<li  class="L2" ><div class="L2" >Cortex-M3 Interrupts und Exceptions</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-int_table.png" alt="./pics/v4_nvic-int_table.png"></div> </ol>
+<li  class="L2" ><div class="L2" >NVIC</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-nvic_ctrler.png" alt="./pics/v4_nvic-nvic_ctrler.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Priotity Grouping</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-priority_grouping.png" alt="./pics/v4_nvic-priority_grouping.png"></div> </ol>
+<li  class="L2" ><div class="L2" >GPIO Interrupt Handling</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-gpio_int_handling.png" alt="./pics/v4_nvic-gpio_int_handling.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Cortex Stack</div>
+<li  class="L2" ><div class="L2" >Nested Interrupts</div> </ol>
+<li  class="L1" ><div class="L1" >5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze</div> <ol>
+<li  class="L2" ><div class="L2" >Cortex Stack</div> <ol>
+<p  class="P3" >Es gibt eigentlich zwei Stack Pointers, nacheinander im RAM angelegt:
+Der Main Stack Pointer für das System (Handler Mode) und der Process
+Stack Pointer für User Space Anwendungen (Privileged Thread Mode). </p>
+</ol>
+<li  class="L2" ><div class="L2" >Interrupt Prozesswechsel</div> <ol>
+<p  class="P3" >Bevor eine ISR ausgeführt werden kann, müssen alle Register auf den
+Stack geladen werden. Das kostet 12 Clock Zyklen. Das zurückladen in die
+Register kostet auch wieder 12 Zyklen.
+</p>
+<p  class="P3" >
+Dank der Harvard Architektur kann das Register in den Stack geladen und
+gleichzeitig das Programm gefetched werden. Deshalb wird bei einem
+Wechsel zuerst der PC auf den Stack geladen. Somit kann das Programm
+gleich anschliessend das neue Programm laden, während es den Rest der
+Register auf den Stack bläst.
+</p>
+<li  class="L3" ><div class="L3" ><img src="./pics/v5_stack-stacking1.png" alt="./pics/v5_stack-stacking1.png"></div>
+<li  class="L3" ><div class="L3" ><img src="./pics/v5_stack-stacking2.png" alt="./pics/v5_stack-stacking2.png"></div>
+<p  class="P3" >Bei jedem Interrupt werden 8x4 Bytes gestacked. </p>
+</ol>
+<li  class="L2" ><div class="L2" >Interrupt Situationen</div> <ol>
+<p  class="P3" >Ein Zurückkehren zum Hauptprogramm nach einem Interrupt kostet jedesmal
+12 Clock Zyklen. In den drei folgenden Situationen kehrt der Cortex-M
+nicht in das Hauptprogramm zurück, sondern springt direkt zum nächsten
+Int und spart so wertvolle Zyklen. Das wechseln zwischen zwei
+Interrupts, das sogenannte Tail Chaining, kostet 6 Zyklen.
+</p>
+<li  class="L3" ><div class="L3" >Nested Interrupts</div> <ol>
+<p  class="P4" >Ein Interrupt unterbricht einen Int niedrigerer Priorität. </p>
+</ol>
+<li  class="L3" ><div class="L3" >Tail Chaining Interrupts</div> <ol>
+<p  class="P4" >Ein Interrupt gleicher oder niedrigerer Priorität folgt gleich
+anschliessend an einen anderen Interrupt. </p>
+</ol>
+<li  class="L3" ><div class="L3" >Late Arrival Interrupts</div> <ol>
+<p  class="P4" >Ein Interrupt wird während ein Interrupt niedrigerer Priorität
+initiiert wird, noch vor dessen Ausführung vorgeschoben. </p>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >Befehlssätze</div> <ol>
+<li  class="L3" ><div class="L3" >ARM 32 Bit</div>
+<li  class="L3" ><div class="L3" >Thumb 16 Bit</div> <ol>
+<li  class="L4" ><div class="L4" ><img src="./pics/v4_nvic-thumb16.png" alt="./pics/v4_nvic-thumb16.png"></div>
+<p  class="P4" >Thumb 16 hat nur 3 Bits für die Adressierung der Register, es können
+also nur 8 Register direkt angesprochen werden. </p>
+</ol>
+<li  class="L3" ><div class="L3" >Thumb2 16 Bit mit 32 Bit Befehlen</div> </ol>
+</ol>
+<li  class="L1" ><div class="L1" >6 Filesystem folien/HPES15_6_filesystem.pdf</div> <ol>
+<p  class="P2" >Es gibt 4 Drives:
+</p>
+<li  class="LB2" > F: Parallel Flash
+<li  class="LB2" > S: Serial (SPI) EEPROM
+<li  class="LB2" > R: Parallel SRAM (internes RAM, lab6.1-6.7)
+<li  class="LB2" > M: MM/SD Card (ab lab6.8)
+<p  class="P2" >Die Einstellungen der Drives werden in der Datei File_config.c gemacht.
+</p>
+<li  class="L2" ><div class="L2" >Inistialisierung</div> <ol>
+<p  class="P3" >finit("M:") Iniitalisiert das Filesystem </p>
+</ol>
+<li  class="L2" ><div class="L2" >File Stream</div> <ol>
+<p  class="P3" >fopen() reserviert einen Buffer, diesen nennt man auch Stream. Um die
+CPU zu entlasten, wird der Stream wird nicht immer sofort in die Datei
+gesschrieben, sondern dann, wenn die CPU gerade nichts anderes zu tun
+hat oder bei fclose() und fflush(). </p>
+</ol>
+<li  class="L2" ><div class="L2" >File I/O Routines</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v6_fs_file-io-routines.png" alt="./pics/v6_fs_file-io-routines.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Functions for opened files</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v6_fs_func_opened_files.png" alt="./pics/v6_fs_func_opened_files.png"></div> </ol>
+<li  class="L2" ><div class="L2" >Functions for reading and writing to file streams</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v6_fs_f-stream-funcs.png" alt="./pics/v6_fs_f-stream-funcs.png"></div> </ol>
+<li  class="L2" ><div class="L2" >fopen() options</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v6_fs_fopen-options.png" alt="./pics/v6_fs_fopen-options.png"></div> </ol>
+</ol>
+<li  class="L1" ><div class="L1" >7 Debuggin folien/HPES15_7_Debugging.pdf</div> <ol>
+<li  class="L2" ><div class="L2" >Debug Monitor</div>
+<li  class="L2" ><div class="L2" >In Circuit Emulator (ICE)</div>
+<li  class="L2" ><div class="L2" >JTAG Schnittstelle</div> <ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v7_debugging-jtag_if.png" alt="./pics/v7_debugging-jtag_if.png"></div>
+<p  class="P3" >Zusätzliche Ffs werden an den Pineingängen platziert, um Verbindungen zu
+testen. Diese kann über eine serielle Schnittstelle abfragen und
+modifizieren. Ursprünglich wurde JTAG für das Überprüfen von
+Lötverbunden eingesetzt, heute kann man damit auch Debuggen.
+</p>
+<li  class="L3" ><div class="L3" >TAB Controller und Pins TDI, TCK, TMS & TDO</div> <ol>
+<li  class="L4" ><div class="L4" ><img src="./pics/v7_debugging-jtag_pins.png" alt="./pics/v7_debugging-jtag_pins.png"></div>
+<li  class="L4" ><div class="L4" >TCK → clock</div>
+<li  class="L4" ><div class="L4" >TDI → test data input</div>
+<li  class="L4" ><div class="L4" >TMS → control TAP machine state</div>
+<li  class="L4" ><div class="L4" >TDO → test data output</div>
+<li  class="L4" ><div class="L4" ><img src="./pics/v7_debugging-jtag_tap_ctrler.png" alt="./pics/v7_debugging-jtag_tap_ctrler.png"></div>
+<li  class="L4" ><div class="L4" >Scan Chains</div> <ol>
+<p  class="P5" >Es können mehrere Daten- oder Befehlsregister definiert werden. </p>
+</ol>
+<li  class="L4" ><div class="L4" >TAB Controller signals</div> <ol>
+<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler2.png" alt="./pics/v7_debugging-jtag_tap_ctrler2.png"></div>
+<li  class="LB5" > Enable <ol>
+<p  class="P6" >Turns on the TDO output </p>
+</ol>
+<li  class="LB5" > Select <ol>
+<p  class="P6" >switches between Instruction and Data Registers </p>
+</ol>
+<li  class="LB5" > Shift <ol>
+<p  class="P6" >shifts the contents of the scan chain </p>
+</ol>
+<li  class="LB5" > Update <ol>
+<p  class="P6" >Updates the register assoziated to the scan chain. The register is
+updated with the contents of the scan chain </p>
+</ol>
+<li  class="LB5" > ClockIR <ol>
+<p  class="P6" >latches contents of Register into scan chain </p>
+</ol>
+</ol>
+<li  class="L4" ><div class="L4" >TAB Controller State Machine</div> <ol>
+<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_sm.png" alt="./pics/v7_debugging-jtag_tap_ctrler_sm.png"></div> </ol>
+<li  class="L4" ><div class="L4" >Lesen und Schreiben der Befehl/Datenregister</div> <ol>
+<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_rw_register.png" alt="./pics/v7_debugging-jtag_tap_ctrler_rw_register.png"></div> </ol>
+<li  class="L4" ><div class="L4" >BSP</div> <ol>
+<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_bsp.png" alt="./pics/v7_debugging-jtag_tap_ctrler_bsp.png"></div> </ol>
+</ol>
+</ol>
+<li  class="L2" ><div class="L2" >ARM Debugging</div> </ol>
+</ol>
+</div>
+<div class="Footer">
+<hr>
+
+<br>
+zufass.otl&nbsp&nbsp 2015/04/16 23:12
+</div>
+</body></html>

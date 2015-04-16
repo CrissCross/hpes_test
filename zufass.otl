@@ -1,0 +1,382 @@
+PES Zusammenfassung
+ToC
+	1 Einführung / Keil RL-ARM Getting Started Guide
+	2 Scheduling
+	3 ARM Architektur
+	4 NVIC - Nested Vectored Interrupt Controller folien/HPES15_4_NVIC.pdf
+	5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze
+	6 Filesystem folien/HPES15_6_filesystem.pdf
+	7 Debuggin folien/HPES15_7_Debugging.pdf
+1 Einführung / Keil RL-ARM Getting Started Guide
+	RTOS - Real Time Operating System
+		: Bei RTOSs steht die Antwortzeit auf eingehende Events und deren
+		: Zuverlässigkeit im Fokus. Die RTOS Programmierung ist aufwendiger in der
+		: Performance und braucht mehr Speicherplatz als die herkömmliche
+		: Programmierung von Mikrokontrollern. Vor einigen Jahren war es noch
+		: nicht möglich ein RTOS auf einem Mikrokontroller zu realisieren.
+	Tasks
+		: In RTOS arbeitet man nur mit Tasks. Diese sind ähnlich wie herkömmliche
+		: C-Prozesse, haben aber auch fundamentale Unterschiede.
+		loop anstatt return value
+			: Tasks laufen im unendlichen Loop
+		__task keyword
+			: Task Definitionen beginnen mit __task
+	Programmstart p21/22
+		: Das Programm startet man in der main Routine. Der erste Task wird mit
+		: dem Befehl os_sys_init(task1) aufgerufen. Dieser muss nun andere Tasks
+		: starten. Sind mehrere Task gestartet, werden diese vom RTX Schduler
+		: verwaltet. Hat ein Task eine höhere Priorität als die anderen, wird
+		: nur diesem Prozessorzeit zugeteilt, bis er in den Zustand WAITING geht.
+		: Alle Tasks mit gleicher Priorität erhalten nach dem RoundRobin Prinzip
+		: Prozessorzeit.
+	Dem Task einen grösseren Stack mitgeben
+		: Per default haben alle Tasks haben die gleiche Stackgrösse. Man kann 
+		: aber mit "static U64 stk4 400/8" einen grossen Stack deklarieren und
+		: diesen dem Task mitgeben (Beachte *_user am Ende des Befehls):
+		; tskID4 = os_tsk_create_user (Task4, priority, &stk4, sizeof (stk4)); 
+	Verwaltung von laufenden Tasks p24
+		: Man kann die Prio von laufenden Tasks ändern.
+		; OS_RESULT = os_tsk_prio (tskID2, priority); 
+		; OS_RESULT = os_tsk_prio_self (priority); 
+		: Oder man kann laufende Tasks löschen:
+		; OS_RESULT = os_tsk_delete (tskID1); 
+		; OS_RESULT = os_tsk_delete_self (); 
+		: Oder man kann die Kontrolle dem nächsten "READY" Task gleicher Prio
+		: übergeben. Die wird benutzt, um den Scheduling Algo "co-operative" zu
+		: implementieren.
+		; os_tsk_pass ();     
+	Time Management p24
+		Clock/Time Einstellungen des RTOS
+			: Es gib zwei Dateien mit wichtigen Einstellungen:
+			hal_system.c
+				: In dieser Datei werden mit dem Befehl SysCtlClockSet(params..) der
+				: Taktteiler, Frequenz des Quartz, und, ob man die PLL benutzt,
+				: eingestellt.
+				: 
+				: Die PLL gibt immer um die 400 MHz aus. Mit dem Teiler 4, die dem
+				: Befehl mitgegeben werden, werden daraus 100 MHz. Dann gibt es intern
+				: zw. PLL und Takteiler einen weiteren /2 Teiler. Daraus resultiert
+				: also ein 50 MHz System Clock Frequenz.
+			RTX_Config.c
+				: Dem System wird  mitgeteilt, über welchen OS Clock es verfügt. Die
+				: 50 MHz aus der hal_system.c Datei werden hier mit "#define OS_CLOCK
+				: 50000000" eingetragen.
+				:
+				: Ausserdem wird der OS_TICK definiert. Dieser Wert entscheidet mit
+				: dem OS_CLOCK, auf wie viel der System Tick Timer zählt. Die Formel
+				: geht so:
+				; Reload-Wert = OS_TICK(zB 10ms)  * OS_CLOCK(zB 50MHz) (siehe P1 A3.2.5)
+				: Das RTOS zählt den Reload Wert herunter, macht einen System Tick und
+				: reloaded den Reload Wert.
+		Timer Delay
+			: Der Task wird in den WAITING State versetzt und der Scheduler schaltet
+			: zum nächsten READY Task. 
+			; void os_dly_wait (unsigned short delay_time)
+		Periodisches Ausführen eines Tasks
+			: Man kann dem Task eine Zeit zuteilen, die er sich schlafen legen soll,
+			: bevor er sich wieder in den READY State begibt. Im Task:
+			; void os_itv_set (unsigned short interval_time) 
+			: Wenn man nun im Task os_itv_wait() ausführt, wartet der Task bis das
+			: Intervall abgelaufen ist, bis er sich wieder in den READY Zustand
+			: begibt.
+		Virtual Timer p26
+			: Ermöglicht es, eine Funktion aufzurufen, die nach einer bestimmten Zeit
+			: erst ausgelöst wird. Alle Virtual Timer Funktionen werden in einer
+			: os_tmr_call Funktion in der Datei RTX_Config.c definiert, und anhand
+			: eines case-switch unterschieden. Der Timer wird nach dem Aufruf
+			: os_tmr_create(switch-Wert) gesetzt.
+			: 
+			: Beim Praktikum 1 hat sich jedoch herausgestellt, dass sich der Virtual
+			: Timer nicht für sich wiederholende Aufrufe eignet, da man den Timer
+			: nach für jede Wiederholung erneut mit os_tmr_create Auslösen muss.
+			: Leider kann sich der Timer nach getaner Arbeit auch nicht selbst
+			: wieder auslösen (aus unbekannten Gründen).
+		Idle Demon p27 TODO
+	Inter Task Communication
+		: Es gibt vier Möglichkeiten: Events, Semaphores, Mutexes und Mailboxes.
+	Events p28 TODO
+	RTOS Interrupt Handling p29
+		: Es wird empfohlen, die Interrupts so selten wie möglich zu benutzen
+		: und statt dessen auf Events zu setzen. Interrupts sind nicht ideal,
+		: weil der ARM7/9 alle General Purpose Pins blockiert bis man die ISR
+		: verlassen hat. Dies verzögert den SysTick und unterbricht den
+		: Kernel.
+		:
+		: Beim Cortex-M ist das Verwenden des Interrupts weniger proplematisch.
+		: Dem im Gegensatz zum ARM7/9 besitzt er nested Interrupts. Die INTs mit
+		: höherer Priorität können also andere INTs unterbrechen. 
+		:
+		: Trotzdem ist es ratsam, den Code in der ISR möglichst kurz zu halten.
+		; void IRQ_Handler (void) __irq  { 
+		; 	isr_evt_set (0x0001, tsk3);    // Signal Task 3 with an event 
+		; 	EXTINT = 0x00000002;           // Clear the peripheral interrupt flag 
+		; 	VICVectAddr = 0x00000000;      // Signal end of interrupt to the VIC 
+		; } 
+		: Die ISR setzt lediglich einen Event ab. Das eigentliche Handling spielt
+		: sich im Task ab ,der auf diesen Event wartet:
+		; void Task3 (void)  { 
+		; 	while (1)  { 
+		;	 	os_evt_wait_or (0x0001, 0xffff);  // Wait until ISR triggers an event 
+		; 	// Handle the interrupt 
+		; 	}                                 // Loop and go back to sleep 
+		; } 
+	Semaphores p32 TODO
+	Mutex p38 TODO
+	Mailbox p39 TODO
+	RTX Kernel s7/p19
+		: Besteht aus einem Scheduler, Zeit- und Speichermanagement Services.
+		: Es gibt drei Schedulung Algos:
+		- round-robin
+		- pre-emptive, and cooperative multitasking of program tasks
+		: Ein zusätzliches RTOS Objekt ermöglicht Inner-task Kommunikation:
+		- Event triggering
+		- Semaphores
+		- Mutex
+		- Ein Mailbox System
+2 Scheduling
+	Task Konzept
+		: Jeder Task sollte eine bestimmte Funktion ausführen. Das Ziel ist, ein
+		: objektorientiertes und modulares Design und daraus die oft zitierten
+		: Vorteile zu erhalten: Die Task in anderen Projekten wiederverwendet
+		: werden. Bei Fehlfunktionen kann das Problem schnell auf eine Task
+		: zurückgeführt werden. Die Task können isoliert, oder in einer
+		: Simulationsumgebung getestet werden.
+	Multitasking
+		: Die Task werden parallel ausgeführt. Die hat wiederum viele Vorteile:
+		- Prozessor IDLE vermeiden
+			: Während der Prozessor zB auf ein Laufwerk wartet können andere Tasks
+			: erledigt werden.
+		- Mehrere Benutzer an einem System
+		- Klarere Programmstrukturierung
+			: Embedded System mit vielen Teilsystemen: Abbildung der realen
+			: Aussenwelt.
+	Scheduler und Scheduling Optionen
+		: Der Scheduler teilt den Tasks anhand von zu definierenden Scheduling
+		: Algos Prozessorzeit zu und veranlasst unter gegebenen Bedingungen
+		: einen Taskwechsel. Es gibt diese Scheduling Algos:
+		- Round Robin
+			- Jede Task hat gleiche Priorität
+			- Task läuft bis sie blockiert (os_wait..)
+			- Oder, falls sie nicht blockiert, bis der Round Robin Timeout eintritt
+			- Bei RL ARM lässt sich sich die Anzahl Timeout Ticks einstellen
+				: In der Datei rtx_config.c
+		- Preemptive Scheduling
+			: Wie RR, aber die Tasks können solche mit niedriger Priorität
+			: unterbrechen.
+			Problem: Priority Inversion
+				Bsb Prios Task 1-3: pT1 > pT2 > pT1
+					: T1 delegiert an T3, und wartet auf dessen Antwort. T3 arbeitet,
+					: wird dann aber von T2 unterbrochen. Nun hat also im übertragenen
+					: Sinne T2 T1 unterbrochen, trotz niedriger Priorität.
+		- Co-Operative Scheduling
+			: Der Taskwechsel findet nur statt, wenn der aktuelle Task blockiert.
+			[./pics/v2_scheduling-coop_scheduling.png]
+		RL-ARM Scheduling Tabelle
+			|| RR gewählt | Task Prioritäten 	| Scheduling 		|
+			| Nein				| Unterschiedlich		| Pre-emptive 	|
+			| Ja					| Gleich						| RR						|
+			| Nein				| Gleich						| Co-operative	|
+			| Ja					| Unterschiedlich		| Pre-emptive und RR |
+	Probleme Prozess Synchronisation
+		- Mutual Exclusion
+			: Wenn ein Task kritische Daten bearbeitet, darf er von einem
+			: nebenläufigen Task, der die gleichen Daten bearbeitet, nicht
+			: unterbrochen werden.
+		- Deadlock
+			: T1 wartet auf Informationen von T2. T2 kann aber nicht weiterarbeiten,
+			: da er darauf wartet, bis T1 fertig ist.
+		- Synchronisation
+			: Ein Prozess kann erst weiterlaufen, wenn er Informationen von einem
+			: anderen Prozess hat.
+	Task Kreieren und Prioritäten setzen (Keil GS p23 / s14)
+		: Am besten benutzt man den ersten Task um die eigentlichen Tasks zu
+		: starten. Dies geschieht mit dem Befehlt os_tsk_create(). Dem neuen Task
+		: können auch Priorität und Parameter mitgegeben werden.
+		; tskID3 = os_tsk_create_ex (Task3, priority, parameter);
+		: Priority nimmt Werte von 1-255. Die Priorität 0 ist für den IDLE Task
+		: reserviert.
+		:
+		: Hat man alle Task erstellt, sollte man den ersten Task mit dem Befehl
+		: os_tsk_delete_self() töten.
+
+	Taskwechsel
+		: Zuerst einmal braucht der Scheduler einen Timer, um die Zeit, zu
+		: messen. In unserem Fall ist dies der SysTick Timer des
+		: (Cortex-M-)Prozessors.	
+		:
+		: Bei jedem Taskwechsel müssen alle Informationen des abzulösenden Tasks
+		: gespeichert werden. Man unterscheidet zwischen "State" und "Runtime"
+		: Informationen. Ersteres wird im Task Stack und letzteres im Task
+		: Control Block gespeichert. Jede Task hat seinen eigenen Task Stack, in
+		: den sie bei einem Wechsel ihre Infos speichert. der Task Control Block
+		: wird vom Kernel benutzt und verwaltet.
+		: 
+		: Eine wichtige Kenngrösse ist die "Context Switch Time", die den
+		: Zeitbedarf eines Taskwechsels angibt. Sie hängt vom Kernel und vom
+		: Hardware Design ab.
+	Taskzustände s8
+		: Können 4 verschiedene Zustände haben: Ready, Running, Blocked (Wait) und
+		: Sleeping. Die meiste Zeit verbringt der Task in den Zuständen Blocked
+		: und Ready.
+		[./pics/v2_scheduling-task_states.png]
+		:
+		: Der Scheduler kann alle Tasks, die im Zustand Ready sind aktivieren und
+		: somit in den Zustand Running versetzen. Auf p21 des Getting Started
+		: Buchs sind alle Zustände und deren Bedeutung tabelliert.
+		| RUNNING			| The currently running TASK											|
+		| READY  			| TASKS ready to run															|
+		| WAIT DELAY	| TASKS halted with a time DELAY 									|
+		| WAIT INT		| TASKS scheduled to run periodically 						|
+		| WAIT OR 		| TASKS waiting an event flag to be set 					|
+		| WAIT AND		| TASKS waiting for a group event flag to be set	|
+		| WAIT SEM		| TASKS waiting for a SEMAPHORE 									|
+		| WAIT MUT		| TASKS waiting for a SEMAPHORE MUTEX 						|
+		| WAIT MBX		| TASKS waiting for a MAILBOX MESSAGE 						|
+		| INACTIVE		| A TASK not started or detected 									|
+	Events
+		Task 1 wartet auf einen Event
+		Task 2 schickt Event an Task  2
+	Semaphores
+		Semaphores step by step
+			Weiteres im Buch (getting stated) s35
+		Barrier Turnstile
+		 Alle Tasks warten aufeinander bis sie den Entry Turnstile erreichen, Alle
+		 verlassen den Turnstile geleichzeitig.
+3 ARM Architektur
+	Geschichte
+	Cortex-M3 Architektur
+		: Cortex-M3 benutzt eine (Modified) Harvard Architektur
+		[./pics/v3_arm_arch-cortex_m3_arch.png]
+	Instruction Pipeline
+		: Die Pipeline hat 3 Stufen: Fetch, Decode und Execute
+		[./pics/v3_arm_arch-cortex_m3_pipeline.png]
+	Register Architektur
+		[./pics/v3_arm_arch-cortex_m3_register.png]	
+		R14 Link Register
+			: Stores PC on subroutine calls. If several layers of subroutines are
+			: called, R14 is stored on Stack.
+	Bedingte Befehle
+		: Die ersten 4 Bits (31-28) einer Instruktion(→PSR) geben eine Condition an.
+		[./pics/v3_arm_arch-cortex_m3_condition_codes.png]
+	Betriebsarten
+		[./pics/v3_arm_arch-cortex_m3_betriebsarten.png]
+		: Das Programm startet zuerst im Priviledged Thread Modus und wechselt
+		: später in den User Thread Modus. Von da aus kann nur über eine
+		: Exception zum Priviledged Thread Modus gewechselt werden. Wenn man eine
+		: Exception aufruft, kommt man in den Priviledged Handler. Hier muss man
+		: nun das Controll Register Bit-0 auf 0 für Privileged Thread oder auf 1
+		: für User Thread Mode setzen.
+	UART konfigurieren
+4 NVIC - Nested Vectored Interrupt Controller
+	Was passiert als erstes bei einem Interrupt?
+	 : prgrm counter ändert Wert zu demjenigen des Interrupts aus der Interrupt
+	 : Vektor Table
+	Cortex-M3 Interrupts und Exceptions
+		[./pics/v4_nvic-int_table.png]
+	NVIC
+		[./pics/v4_nvic-nvic_ctrler.png]
+	Priotity Grouping
+		[./pics/v4_nvic-priority_grouping.png]
+	GPIO Interrupt Handling
+		[./pics/v4_nvic-gpio_int_handling.png]
+	Cortex Stack
+	Nested Interrupts
+5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze
+	Cortex Stack
+		: Es gibt eigentlich zwei Stack Pointers, nacheinander im RAM angelegt:
+		: Der Main Stack Pointer für das System (Handler Mode) und der Process
+		: Stack Pointer für User Space Anwendungen (Privileged Thread Mode).
+	Interrupt Prozesswechsel
+		: Bevor eine ISR ausgeführt werden kann, müssen alle Register auf den
+		: Stack geladen werden. Das kostet 12 Clock Zyklen. Das zurückladen in die
+		: Register kostet auch wieder 12 Zyklen.
+		: 
+		: Dank der Harvard Architektur kann das Register in den Stack geladen und
+		: gleichzeitig das Programm gefetched werden. Deshalb wird bei einem
+		: Wechsel zuerst der PC auf den Stack geladen. Somit kann das Programm
+		: gleich anschliessend das neue Programm laden, während es den Rest der
+		: Register auf den Stack bläst.
+		[./pics/v5_stack-stacking1.png]
+		[./pics/v5_stack-stacking2.png]
+		: Bei jedem Interrupt werden 8x4 Bytes gestacked.
+	Interrupt Situationen
+		: Ein Zurückkehren zum Hauptprogramm nach einem Interrupt kostet jedesmal
+		: 12 Clock Zyklen. In den drei folgenden Situationen kehrt der Cortex-M
+		: nicht in das Hauptprogramm zurück, sondern springt direkt zum nächsten
+		: Int und spart so wertvolle Zyklen. Das wechseln zwischen zwei
+		: Interrupts, das sogenannte Tail Chaining, kostet 6 Zyklen.
+		Nested Interrupts
+			: Ein Interrupt unterbricht einen Int niedrigerer Priorität.
+		Tail Chaining Interrupts
+			: Ein Interrupt gleicher oder niedrigerer Priorität folgt gleich
+			: anschliessend an einen anderen Interrupt.
+		Late Arrival Interrupts
+			: Ein Interrupt wird während ein Interrupt niedrigerer Priorität
+			: initiiert wird, noch vor dessen Ausführung vorgeschoben.
+	Befehlssätze
+		ARM 32 Bit
+		Thumb 16 Bit
+			[./pics/v4_nvic-thumb16.png]
+			: Thumb 16 hat nur 3 Bits für die Adressierung der Register, es können
+			: also nur 8 Register direkt angesprochen werden. 
+		Thumb2 16 Bit mit 32 Bit Befehlen
+6 Filesystem folien/HPES15_6_filesystem.pdf
+	: Es gibt 4 Drives:
+	- F: Parallel Flash
+	- S: Serial (SPI) EEPROM
+	- R: Parallel SRAM (internes RAM, lab6.1-6.7)
+	- M: MM/SD Card (ab lab6.8)
+	: Die Einstellungen der Drives werden in der Datei File_config.c gemacht.
+	Inistialisierung
+		: finit("M:") Iniitalisiert das Filesystem
+	File Stream
+		: fopen() reserviert einen Buffer, diesen nennt man auch Stream. Um die
+		: CPU zu entlasten, wird der Stream wird nicht immer sofort in die Datei
+		: gesschrieben, sondern dann, wenn die CPU gerade nichts anderes zu tun
+		: hat oder bei fclose() und fflush().
+	File I/O Routines
+		[./pics/v6_fs_file-io-routines.png]
+	Functions for opened files
+		[./pics/v6_fs_func_opened_files.png]	
+	Functions for reading and writing to file streams
+		[./pics/v6_fs_f-stream-funcs.png]
+	fopen() options
+		[./pics/v6_fs_fopen-options.png]
+7 Debuggin folien/HPES15_7_Debugging.pdf
+	Debug Monitor
+	In Circuit Emulator (ICE)
+	JTAG Schnittstelle
+		[./pics/v7_debugging-jtag_if.png]
+		: Zusätzliche Ffs werden an den Pineingängen platziert, um Verbindungen zu
+		: testen. Diese kann über eine serielle Schnittstelle abfragen und
+		: modifizieren. Ursprünglich wurde JTAG für das Überprüfen von
+		: Lötverbunden eingesetzt, heute kann man damit auch Debuggen.
+		TAB Controller und Pins TDI, TCK, TMS & TDO
+			[./pics/v7_debugging-jtag_pins.png]
+			TCK → clock
+			TDI → test data input
+			TMS → control TAP machine state
+			TDO → test data output
+			[./pics/v7_debugging-jtag_tap_ctrler.png]
+			Scan Chains
+				: Es können mehrere Daten- oder Befehlsregister definiert werden.
+			TAB Controller signals
+				[./pics/v7_debugging-jtag_tap_ctrler2.png]
+				- Enable
+					: Turns on the TDO output
+				- Select
+					: switches between Instruction and Data Registers
+				- Shift
+					: shifts the contents of the scan chain
+				- Update
+					: Updates the register assoziated to the scan chain. The register is
+					: updated with the contents of the scan chain
+				- ClockIR
+					: latches contents of Register into scan chain
+			TAB Controller State Machine
+				[./pics/v7_debugging-jtag_tap_ctrler_sm.png]
+			Lesen und Schreiben der Befehl/Datenregister
+				[./pics/v7_debugging-jtag_tap_ctrler_rw_register.png]
+			BSP
+				[./pics/v7_debugging-jtag_tap_ctrler_bsp.png]
+	ARM Debugging
