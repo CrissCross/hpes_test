@@ -1,6 +1,10 @@
 # hpes_test
 ## Generate HTML
-` ./otl2html.py -s zufass.css zufass.otl > zufass.html
+```shell
+./otl2html.py -s zufass.css zufass.otl > zufass.html
+```
 ## Generate PDF
-[I recommend the tool wkhtmltopdf](http://wkhtmltopdf.org/)
-` wkhtmltopdf -s A5 zufass.html zufass.pdf
+[I recommend wkhtmltopdf](http://wkhtmltopdf.org/)
+```shell
+wkhtmltopdf -s A5 zufass.html zufass.pdf
+```
