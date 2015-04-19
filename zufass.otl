@@ -1,13 +1,18 @@
 PES Zusammenfassung
 ToC
-	1 Einführung / Keil RL-ARM Getting Started Guide
+	1 Einführung / Keil RL-ARM GS Guide
 	2 Scheduling
 	3 ARM Architektur
 	4 NVIC - Nested Vectored Interrupt Controller folien/HPES15_4_NVIC.pdf
 	5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze
 	6 Filesystem folien/HPES15_6_filesystem.pdf
 	7 Debuggin folien/HPES15_7_Debugging.pdf
-1 Einführung / Keil RL-ARM Getting Started Guide
+1 Einführung / Keil RL-ARM GS Guide
+	ARM Cortex
+		: Ist eine Standartarchitektur von Prozessoren, die für eine grosse
+		: Palette an Anwendungen benutzt werden kann. Es existieren drei Profile:
+		: A für High End Applikationen, R für Real Time Apps und M für günstige
+		: Ausführungen.
 	RTOS - Real Time Operating System
 		: Bei RTOSs steht die Antwortzeit auf eingehende Events und deren
 		: Zuverlässigkeit im Fokus. Die RTOS Programmierung ist aufwendiger in der
@@ -71,11 +76,12 @@ ToC
 		Timer Delay
 			: Der Task wird in den WAITING State versetzt und der Scheduler schaltet
 			: zum nächsten READY Task. 
-			; void os_dly_wait (unsigned short delay_time)
+			; void os_dly_wait (unsigned short delay_time_in_sysTicks)
 		Periodisches Ausführen eines Tasks
 			: Man kann dem Task eine Zeit zuteilen, die er sich schlafen legen soll,
 			: bevor er sich wieder in den READY State begibt. Im Task:
-			; void os_itv_set (unsigned short interval_time) 
+			; void os_itv_set (unsigned short interval_time_in_sysTicks) 
+			; void os_itv_wait (void)
 			: Wenn man nun im Task os_itv_wait() ausführt, wartet der Task bis das
 			: Intervall abgelaufen ist, bis er sich wieder in den READY Zustand
 			: begibt.
@@ -198,7 +204,6 @@ ToC
 		:
 		: Hat man alle Task erstellt, sollte man den ersten Task mit dem Befehl
 		: os_tsk_delete_self() töten.
-
 	Taskwechsel
 		: Zuerst einmal braucht der Scheduler einen Timer, um die Zeit, zu
 		: messen. In unserem Fall ist dies der SysTick Timer des
@@ -248,15 +253,56 @@ ToC
 		: Cortex-M3 benutzt eine (Modified) Harvard Architektur
 		[./pics/v3_arm_arch-cortex_m3_arch.png]
 	Instruction Pipeline
-		: Die Pipeline hat 3 Stufen: Fetch, Decode und Execute
-		[./pics/v3_arm_arch-cortex_m3_pipeline.png]
+		: Die Pipeline hat 3 Stufen: Fetch, Decode und Execute. Der Vorteil der
+		: Pipeline ist, das Befehle parallel ausgeführt werden können. Der
+		: Nachteil ist, das bei einem Branch. die ganze Pipeline geflusht werden
+		: muss. Allerdings wird versucht diesem Nachteil mit Branch Prediction
+		: entgegenzutreten.
 	Register Architektur
 		[./pics/v3_arm_arch-cortex_m3_register.png]	
+		R0-7 low registers
+			: Können von allen (auch 16-bit Thumb) Befehlen verwendet werden.
+		R8-12 high registers
+			: Können von Thumb-2 aber nicht von 16 Bit Thumb verwendet werden.
+		R13 Main/Process Stack Pointer
+			: Der MSP ist der default Stack Pointer. Es wird benutzt vom OS kernel,
+			: Exception Handlers und allen Programmen, die priviligierten Zugriff
+			: haben. Der PSP wird von "normalen" Programmen benutzt, solange sie
+			: nicht einen Exception Handler ausführen, benutzt.
+			: 
+			: Wenn ein Prgromm läuft, kann es nur anderen Stack zugreifen, in dem
+			: die Spezialbefehle MSR oder MRS ausgeführt werden.
 		R14 Link Register
 			: Stores PC on subroutine calls. If several layers of subroutines are
 			: called, R14 is stored on Stack.
+		PSR Program Status Register
+		Control Register (Nicht auf dem Bild)
+			: Hat lediglich 2 Bits. 
+			Ctrl[0]
+				: Entscheidet ob es nach einer Exception im User oder Priviledged
+				: Thread Mode weitergeht. Ist nur im priviledged Mode beschreibbar.
+			Ctrl[1]
+				: Gibt an, welcher Stack benutzt wird (MSP oder PSP). Im Handler Mode
+				: immer 0. Es kann nur im Privilidged Thread mode beschrieben werden.
+				: Eine andere Methode dieses Bit zu überschreiben wäre das Bit-2 vom
+				: LR zu ändern. Dann wird beim Zurückkehren aus einer Exception dieses
+				: Bit angepasst.
 	Bedingte Befehle
-		: Die ersten 4 Bits (31-28) einer Instruktion(→PSR) geben eine Condition an.
+		: If/else Konditionen verursachen normalerweise Pipeline Branches. Dank
+		: der Conditional Execution im ARM Befehlssatz können Branches in diesen
+		: Situationen umgangen werden. Dafür werden die Assembler Befehle mit
+		: Suffixen erweitert.
+		:
+		: Die ersten 4 Bits (31-28) im PSR geben Auskunft über den letzten
+		: ausgeführten Befehl. Sie werden gesetzt bei Vergleichsoperationen wie zB
+		: CMP automatisch gesetzt. Möchte man diese  Bits auch bei anderen
+		: Operationen setzen, wird ein 'S' hinter den Assembler Befehl angefügt.
+		: Die vier Bits (siehe Tabelle) entscheiden nun zusammen mit den Condition
+		: Codes am Ende des nächsten Befehls, ob dieser ausgeführt oder mit einem
+		: NOOP zum nächsten übergegangen wird.
+		:
+		:	Condition Codes (zB EQ, CC, ...) werden wie das 'S' an die mnemonics des
+		: Assemblerbefehls angefügt.
 		[./pics/v3_arm_arch-cortex_m3_condition_codes.png]
 	Betriebsarten
 		[./pics/v3_arm_arch-cortex_m3_betriebsarten.png]
@@ -266,7 +312,6 @@ ToC
 		: Exception aufruft, kommt man in den Priviledged Handler. Hier muss man
 		: nun das Controll Register Bit-0 auf 0 für Privileged Thread oder auf 1
 		: für User Thread Mode setzen.
-	UART konfigurieren
 4 NVIC - Nested Vectored Interrupt Controller
 	Was passiert als erstes bei einem Interrupt?
 	 : prgrm counter ändert Wert zu demjenigen des Interrupts aus der Interrupt
@@ -275,6 +320,9 @@ ToC
 		[./pics/v4_nvic-int_table.png]
 	NVIC
 		[./pics/v4_nvic-nvic_ctrler.png]
+		: Anstehende Interrupts kommen zuerst ins IntPending Register. Stehen mehr
+		: als ein Interrupt an, entscheidet die Priority State Machine in welcher
+		: Reihenfolge die Interrupts ausgeführt werden.
 	Priotity Grouping
 		[./pics/v4_nvic-priority_grouping.png]
 	GPIO Interrupt Handling
@@ -303,8 +351,9 @@ ToC
 		: Ein Zurückkehren zum Hauptprogramm nach einem Interrupt kostet jedesmal
 		: 12 Clock Zyklen. In den drei folgenden Situationen kehrt der Cortex-M
 		: nicht in das Hauptprogramm zurück, sondern springt direkt zum nächsten
-		: Int und spart so wertvolle Zyklen. Das wechseln zwischen zwei
-		: Interrupts, das sogenannte Tail Chaining, kostet 6 Zyklen.
+		: Interrupt. Deshalb muss es nicht die Register vom Hauptprogramm laden
+		: und spart so wertvolle Zyklen. Das wechseln zwischen zwei Interrupts,
+		: das sogenannte Tail Chaining, kostet 6 Zyklen.
 		Nested Interrupts
 			: Ein Interrupt unterbricht einen Int niedrigerer Priorität.
 		Tail Chaining Interrupts
@@ -351,12 +400,11 @@ ToC
 		: testen. Diese kann über eine serielle Schnittstelle abfragen und
 		: modifizieren. Ursprünglich wurde JTAG für das Überprüfen von
 		: Lötverbunden eingesetzt, heute kann man damit auch Debuggen.
+		:
+		: JTAG benutzt zwei Scan Chains. Eines für Instructions und eine für
+		: Daten.
 		TAB Controller und Pins TDI, TCK, TMS & TDO
 			[./pics/v7_debugging-jtag_pins.png]
-			TCK → clock
-			TDI → test data input
-			TMS → control TAP machine state
-			TDO → test data output
 			[./pics/v7_debugging-jtag_tap_ctrler.png]
 			Scan Chains
 				: Es können mehrere Daten- oder Befehlsregister definiert werden.
@@ -375,6 +423,11 @@ ToC
 					: latches contents of Register into scan chain
 			TAB Controller State Machine
 				[./pics/v7_debugging-jtag_tap_ctrler_sm.png]
+				Test-Login-Reset
+					: Ist der Zustand von TMS 5 steigenden Flanken des TCK hintereinander
+					: auf high, geht der TAP controller in den Zustand "Test-Logig-Reset".
+				Shift-DR
+					: Daten werden auf TDO geschoben.
 			Lesen und Schreiben der Befehl/Datenregister
 				[./pics/v7_debugging-jtag_tap_ctrler_rw_register.png]
 			BSP

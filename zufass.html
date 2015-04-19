@@ -15,16 +15,27 @@
     <h1>PES Zusammenfassung</h1>
     </div>
     <div class="MainPage">
+<div class="container ToC">
 <ol>
 <li  class="L1" ><div class="L1" >ToC</div> <ol>
-<li  class="L2" ><div class="L2" >1 Einführung / Keil RL-ARM Getting Started Guide</div>
+<li  class="L2" ><div class="L2" >1 Einführung / Keil RL-ARM GS Guide</div>
 <li  class="L2" ><div class="L2" >2 Scheduling</div>
 <li  class="L2" ><div class="L2" >3 ARM Architektur</div>
 <li  class="L2" ><div class="L2" >4 NVIC - Nested Vectored Interrupt Controller folien/HPES15_4_NVIC.pdf</div>
 <li  class="L2" ><div class="L2" >5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze</div>
 <li  class="L2" ><div class="L2" >6 Filesystem folien/HPES15_6_filesystem.pdf</div>
 <li  class="L2" ><div class="L2" >7 Debuggin folien/HPES15_7_Debugging.pdf</div> </ol>
-<li  class="L1" ><div class="L1" >1 Einführung / Keil RL-ARM Getting Started Guide</div> <ol>
+</ol>
+</div>
+<div class="container 1_Einführung_/_Keil_RL-ARM_GS_Guide">
+<ol>
+<li  class="L1" ><div class="L1" >1 Einführung / Keil RL-ARM GS Guide</div> <ol>
+<li  class="L2" ><div class="L2" >ARM Cortex</div> <ol>
+<p  class="P3" >Ist eine Standartarchitektur von Prozessoren, die für eine grosse
+Palette an Anwendungen benutzt werden kann. Es existieren drei Profile:
+A für High End Applikationen, R für Real Time Apps und M für günstige
+Ausführungen. </p>
+</ol>
 <li  class="L2" ><div class="L2" >RTOS - Real Time Operating System</div> <ol>
 <p  class="P3" >Bei RTOSs steht die Antwortzeit auf eingehende Events und deren
 Zuverlässigkeit im Fokus. Die RTOS Programmierung ist aufwendiger in der
@@ -111,13 +122,14 @@ reloaded den Reload Wert. </p>
 <p  class="P4" >Der Task wird in den WAITING State versetzt und der Scheduler schaltet
 zum nächsten READY Task.
 </p>
-<pre  class="PRE4" > void os_dly_wait (unsigned short delay_time) </pre>
+<pre  class="PRE4" > void os_dly_wait (unsigned short delay_time_in_sysTicks) </pre>
 </ol>
 <li  class="L3" ><div class="L3" >Periodisches Ausführen eines Tasks</div> <ol>
 <p  class="P4" >Man kann dem Task eine Zeit zuteilen, die er sich schlafen legen soll,
 bevor er sich wieder in den READY State begibt. Im Task:
 </p>
-<pre  class="PRE4" > void os_itv_set (unsigned short interval_time)
+<pre  class="PRE4" > void os_itv_set (unsigned short interval_time_in_sysTicks)
+ void os_itv_wait (void)
 </pre>
 <p  class="P4" >Wenn man nun im Task os_itv_wait() ausführt, wartet der Task bis das
 Intervall abgelaufen ist, bis er sich wieder in den READY Zustand
@@ -189,6 +201,10 @@ Es gibt drei Schedulung Algos:
 <li  class="LB3" > Mutex
 <li  class="LB3" > Ein Mailbox System </ol>
 </ol>
+</ol>
+</div>
+<div class="container 2_Scheduling">
+<ol>
 <li  class="L1" ><div class="L1" >2 Scheduling</div> <ol>
 <li  class="L2" ><div class="L2" >Task Konzept</div> <ol>
 <p  class="P3" >Jeder Task sollte eine bestimmte Funktion ausführen. Das Ziel ist, ein
@@ -330,6 +346,10 @@ Buchs sind alle Zustände und deren Bedeutung tabelliert.
 verlassen den Turnstile geleichzeitig. </p>
 </ol>
 </ol>
+</ol>
+</div>
+<div class="container 3_ARM_Architektur">
+<ol>
 <li  class="L1" ><div class="L1" >3 ARM Architektur</div> <ol>
 <li  class="L2" ><div class="L2" >Geschichte</div>
 <li  class="L2" ><div class="L2" >Cortex-M3 Architektur</div> <ol>
@@ -337,18 +357,69 @@ verlassen den Turnstile geleichzeitig. </p>
 </p>
 <li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_arch.png" alt="./pics/v3_arm_arch-cortex_m3_arch.png"></div> </ol>
 <li  class="L2" ><div class="L2" >Instruction Pipeline</div> <ol>
-<p  class="P3" >Die Pipeline hat 3 Stufen: Fetch, Decode und Execute
-</p>
-<li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_pipeline.png" alt="./pics/v3_arm_arch-cortex_m3_pipeline.png"></div> </ol>
+<p  class="P3" >Die Pipeline hat 3 Stufen: Fetch, Decode und Execute. Der Vorteil der
+Pipeline ist, das Befehle parallel ausgeführt werden können. Der
+Nachteil ist, das bei einem Branch. die ganze Pipeline geflusht werden
+muss. Allerdings wird versucht diesem Nachteil mit Branch Prediction
+entgegenzutreten. </p>
+</ol>
 <li  class="L2" ><div class="L2" >Register Architektur</div> <ol>
 <li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_register.png" alt="./pics/v3_arm_arch-cortex_m3_register.png"></div>
+<li  class="L3" ><div class="L3" >R0-7 low registers</div> <ol>
+<p  class="P4" >Können von allen (auch 16-bit Thumb) Befehlen verwendet werden. </p>
+</ol>
+<li  class="L3" ><div class="L3" >R8-12 high registers</div> <ol>
+<p  class="P4" >Können von Thumb-2 aber nicht von 16 Bit Thumb verwendet werden. </p>
+</ol>
+<li  class="L3" ><div class="L3" >R13 Main/Process Stack Pointer</div> <ol>
+<p  class="P4" >Der MSP ist der default Stack Pointer. Es wird benutzt vom OS kernel,
+Exception Handlers und allen Programmen, die priviligierten Zugriff
+haben. Der PSP wird von "normalen" Programmen benutzt, solange sie
+nicht einen Exception Handler ausführen, benutzt.
+</p>
+<p  class="P4" >
+Wenn ein Prgromm läuft, kann es nur anderen Stack zugreifen, in dem
+die Spezialbefehle MSR oder MRS ausgeführt werden. </p>
+</ol>
 <li  class="L3" ><div class="L3" >R14 Link Register</div> <ol>
 <p  class="P4" >Stores PC on subroutine calls. If several layers of subroutines are
 called, R14 is stored on Stack. </p>
 </ol>
+<li  class="L3" ><div class="L3" >PSR Program Status Register</div>
+<li  class="L3" ><div class="L3" >Control Register (Nicht auf dem Bild)</div> <ol>
+<p  class="P4" >Hat lediglich 2 Bits.
+</p>
+<li  class="L4" ><div class="L4" >Ctrl<img src="0" alt="0"></div> <ol>
+<p  class="P5" >Entscheidet ob es nach einer Exception im User oder Priviledged
+Thread Mode weitergeht. Ist nur im priviledged Mode beschreibbar. </p>
+</ol>
+<li  class="L4" ><div class="L4" >Ctrl<img src="1" alt="1"></div> <ol>
+<p  class="P5" >Gibt an, welcher Stack benutzt wird (MSP oder PSP). Im Handler Mode
+immer 0. Es kann nur im Privilidged Thread mode beschrieben werden.
+Eine andere Methode dieses Bit zu überschreiben wäre das Bit-2 vom
+LR zu ändern. Dann wird beim Zurückkehren aus einer Exception dieses
+Bit angepasst. </p>
+</ol>
+</ol>
 </ol>
 <li  class="L2" ><div class="L2" >Bedingte Befehle</div> <ol>
-<p  class="P3" >Die ersten 4 Bits (31-28) einer Instruktion(→PSR) geben eine Condition an.
+<p  class="P3" >If/else Konditionen verursachen normalerweise Pipeline Branches. Dank
+der Conditional Execution im ARM Befehlssatz können Branches in diesen
+Situationen umgangen werden. Dafür werden die Assembler Befehle mit
+Suffixen erweitert.
+</p>
+<p  class="P3" >
+Die ersten 4 Bits (31-28) im PSR geben Auskunft über den letzten
+ausgeführten Befehl. Sie werden gesetzt bei Vergleichsoperationen wie zB
+CMP automatisch gesetzt. Möchte man diese  Bits auch bei anderen
+Operationen setzen, wird ein 'S' hinter den Assembler Befehl angefügt.
+Die vier Bits (siehe Tabelle) entscheiden nun zusammen mit den Condition
+Codes am Ende des nächsten Befehls, ob dieser ausgeführt oder mit einem
+NOOP zum nächsten übergegangen wird.
+</p>
+<p  class="P3" >
+Condition Codes (zB EQ, CC, ...) werden wie das 'S' an die mnemonics des
+Assemblerbefehls angefügt.
 </p>
 <li  class="L3" ><div class="L3" ><img src="./pics/v3_arm_arch-cortex_m3_condition_codes.png" alt="./pics/v3_arm_arch-cortex_m3_condition_codes.png"></div> </ol>
 <li  class="L2" ><div class="L2" >Betriebsarten</div> <ol>
@@ -360,7 +431,11 @@ Exception aufruft, kommt man in den Priviledged Handler. Hier muss man
 nun das Controll Register Bit-0 auf 0 für Privileged Thread oder auf 1
 für User Thread Mode setzen. </p>
 </ol>
-<li  class="L2" ><div class="L2" >UART konfigurieren</div> </ol>
+</ol>
+</ol>
+</div>
+<div class="container 4_NVIC_-_Nested_Vectored_Interrupt_Controller">
+<ol>
 <li  class="L1" ><div class="L1" >4 NVIC - Nested Vectored Interrupt Controller</div> <ol>
 <li  class="L2" ><div class="L2" >Was passiert als erstes bei einem Interrupt?</div>
 <p  class="P2" >prgrm counter ändert Wert zu demjenigen des Interrupts aus der Interrupt
@@ -369,13 +444,21 @@ Vektor Table
 <li  class="L2" ><div class="L2" >Cortex-M3 Interrupts und Exceptions</div> <ol>
 <li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-int_table.png" alt="./pics/v4_nvic-int_table.png"></div> </ol>
 <li  class="L2" ><div class="L2" >NVIC</div> <ol>
-<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-nvic_ctrler.png" alt="./pics/v4_nvic-nvic_ctrler.png"></div> </ol>
+<li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-nvic_ctrler.png" alt="./pics/v4_nvic-nvic_ctrler.png"></div>
+<p  class="P3" >Anstehende Interrupts kommen zuerst ins IntPending Register. Stehen mehr
+als ein Interrupt an, entscheidet die Priority State Machine in welcher
+Reihenfolge die Interrupts ausgeführt werden. </p>
+</ol>
 <li  class="L2" ><div class="L2" >Priotity Grouping</div> <ol>
 <li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-priority_grouping.png" alt="./pics/v4_nvic-priority_grouping.png"></div> </ol>
 <li  class="L2" ><div class="L2" >GPIO Interrupt Handling</div> <ol>
 <li  class="L3" ><div class="L3" ><img src="./pics/v4_nvic-gpio_int_handling.png" alt="./pics/v4_nvic-gpio_int_handling.png"></div> </ol>
 <li  class="L2" ><div class="L2" >Cortex Stack</div>
 <li  class="L2" ><div class="L2" >Nested Interrupts</div> </ol>
+</ol>
+</div>
+<div class="container 5_Cortex-M_Stackpointer_&_ARM/Thumb_Befehlssätze">
+<ol>
 <li  class="L1" ><div class="L1" >5 Cortex-M Stackpointer & ARM/Thumb Befehlssätze</div> <ol>
 <li  class="L2" ><div class="L2" >Cortex Stack</div> <ol>
 <p  class="P3" >Es gibt eigentlich zwei Stack Pointers, nacheinander im RAM angelegt:
@@ -402,8 +485,9 @@ Register auf den Stack bläst.
 <p  class="P3" >Ein Zurückkehren zum Hauptprogramm nach einem Interrupt kostet jedesmal
 12 Clock Zyklen. In den drei folgenden Situationen kehrt der Cortex-M
 nicht in das Hauptprogramm zurück, sondern springt direkt zum nächsten
-Int und spart so wertvolle Zyklen. Das wechseln zwischen zwei
-Interrupts, das sogenannte Tail Chaining, kostet 6 Zyklen.
+Interrupt. Deshalb muss es nicht die Register vom Hauptprogramm laden
+und spart so wertvolle Zyklen. Das wechseln zwischen zwei Interrupts,
+das sogenannte Tail Chaining, kostet 6 Zyklen.
 </p>
 <li  class="L3" ><div class="L3" >Nested Interrupts</div> <ol>
 <p  class="P4" >Ein Interrupt unterbricht einen Int niedrigerer Priorität. </p>
@@ -426,6 +510,10 @@ also nur 8 Register direkt angesprochen werden. </p>
 </ol>
 <li  class="L3" ><div class="L3" >Thumb2 16 Bit mit 32 Bit Befehlen</div> </ol>
 </ol>
+</ol>
+</div>
+<div class="container 6_Filesystem_folien/HPES15_6_filesystem.pdf">
+<ol>
 <li  class="L1" ><div class="L1" >6 Filesystem folien/HPES15_6_filesystem.pdf</div> <ol>
 <p  class="P2" >Es gibt 4 Drives:
 </p>
@@ -453,6 +541,10 @@ hat oder bei fclose() und fflush(). </p>
 <li  class="L2" ><div class="L2" >fopen() options</div> <ol>
 <li  class="L3" ><div class="L3" ><img src="./pics/v6_fs_fopen-options.png" alt="./pics/v6_fs_fopen-options.png"></div> </ol>
 </ol>
+</ol>
+</div>
+<div class="container 7_Debuggin_folien/HPES15_7_Debugging.pdf">
+<ol>
 <li  class="L1" ><div class="L1" >7 Debuggin folien/HPES15_7_Debugging.pdf</div> <ol>
 <li  class="L2" ><div class="L2" >Debug Monitor</div>
 <li  class="L2" ><div class="L2" >In Circuit Emulator (ICE)</div>
@@ -463,12 +555,12 @@ testen. Diese kann über eine serielle Schnittstelle abfragen und
 modifizieren. Ursprünglich wurde JTAG für das Überprüfen von
 Lötverbunden eingesetzt, heute kann man damit auch Debuggen.
 </p>
+<p  class="P3" >
+JTAG benutzt zwei Scan Chains. Eines für Instructions und eine für
+Daten.
+</p>
 <li  class="L3" ><div class="L3" >TAB Controller und Pins TDI, TCK, TMS & TDO</div> <ol>
 <li  class="L4" ><div class="L4" ><img src="./pics/v7_debugging-jtag_pins.png" alt="./pics/v7_debugging-jtag_pins.png"></div>
-<li  class="L4" ><div class="L4" >TCK → clock</div>
-<li  class="L4" ><div class="L4" >TDI → test data input</div>
-<li  class="L4" ><div class="L4" >TMS → control TAP machine state</div>
-<li  class="L4" ><div class="L4" >TDO → test data output</div>
 <li  class="L4" ><div class="L4" ><img src="./pics/v7_debugging-jtag_tap_ctrler.png" alt="./pics/v7_debugging-jtag_tap_ctrler.png"></div>
 <li  class="L4" ><div class="L4" >Scan Chains</div> <ol>
 <p  class="P5" >Es können mehrere Daten- oder Befehlsregister definiert werden. </p>
@@ -493,7 +585,15 @@ updated with the contents of the scan chain </p>
 </ol>
 </ol>
 <li  class="L4" ><div class="L4" >TAB Controller State Machine</div> <ol>
-<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_sm.png" alt="./pics/v7_debugging-jtag_tap_ctrler_sm.png"></div> </ol>
+<li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_sm.png" alt="./pics/v7_debugging-jtag_tap_ctrler_sm.png"></div>
+<li  class="L5" ><div class="L5" >Test-Login-Reset</div> <ol>
+<p  class="P6" >Ist der Zustand von TMS 5 steigenden Flanken des TCK hintereinander
+auf high, geht der TAP controller in den Zustand "Test-Logig-Reset". </p>
+</ol>
+<li  class="L5" ><div class="L5" >Shift-DR</div> <ol>
+<p  class="P6" >Daten werden auf TDO geschoben. </p>
+</ol>
+</ol>
 <li  class="L4" ><div class="L4" >Lesen und Schreiben der Befehl/Datenregister</div> <ol>
 <li  class="L5" ><div class="L5" ><img src="./pics/v7_debugging-jtag_tap_ctrler_rw_register.png" alt="./pics/v7_debugging-jtag_tap_ctrler_rw_register.png"></div> </ol>
 <li  class="L4" ><div class="L4" >BSP</div> <ol>
@@ -502,11 +602,5 @@ updated with the contents of the scan chain </p>
 </ol>
 <li  class="L2" ><div class="L2" >ARM Debugging</div> </ol>
 </ol>
-</div>
-<div class="Footer">
-<hr>
-
-<br>
-zufass.otl&nbsp&nbsp 2015/04/16 23:12
 </div>
 </body></html>
